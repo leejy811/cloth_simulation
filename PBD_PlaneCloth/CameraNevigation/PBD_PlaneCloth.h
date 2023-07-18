@@ -4,7 +4,7 @@
 #pragma once
 #include "Vec3.h"
 #include "Vertex.h"
-//#include "Face.h"
+#include "Face.h"
 #include <vector>
 
 using namespace std;
@@ -16,13 +16,14 @@ public:
 	//vector<double>	_bendingForce;
 	//vector<double>	_dihedralAngle;
 	vector<Vertex*> _vertices;
-	double test;
-	//vector<Face*> _faces;
+	vector<Face*> _faces;
 public:
 	double			_structuralLength0Horiz; // horizontal structural
 	double			_structuralLength0Verti; // vertical structural
-	double			_bendLength0Horiz; // horizontal bend
-	double			_bendLength0Verti; // vertical bend
+	double			_structuralLength0Diago; // vertical structural
+	double			_bendLength0Short; // horizontal bend
+	double			_bendLength0LongHoriz; // horizontal bend
+	double			_bendLength0LongVerti; // vertical bend
 	double			_shearLength0Horiz;	// horizontal shear
 	double			_shearLength0Verti;	// Vertical shear 
 public:
@@ -33,6 +34,7 @@ public:
 	inline vec3	pos(int i, int j) { return _vertices[j * _res[0] + i]->_pos; }
 public:
 	void	init(void);
+	void	reset(void);
 	void	integrate(double dt);
 	void	simulation(double dt);
 	void	computeRestLength(void);

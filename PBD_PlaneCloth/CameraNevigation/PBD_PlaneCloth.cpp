@@ -13,6 +13,8 @@ PBD_PlaneCloth::PBD_PlaneCloth(int width, int height)
 	_res[0] = width;
 	_res[1] = height;
 
+	_vertices.resize(_res[0] * _res[1]);
+
 	init();
 	computeRestLength();
 	//computeDihedralAngle();
@@ -73,10 +75,12 @@ void PBD_PlaneCloth::computeRestLength(void)
 {
 	_structuralLength0Horiz = 2.0 / (double)_res[0];
 	_structuralLength0Verti = 2.0 / (double)_res[1];
+	_structuralLength0Diago = sqrt(pow(_structuralLength0Horiz, 2.0) + pow(_structuralLength0Verti, 2.0));
 	_shearLength0Horiz = sqrt(2.0) * _structuralLength0Horiz;
 	_shearLength0Verti = sqrt(2.0) * _structuralLength0Verti;
-	_bendLength0Horiz = _structuralLength0Horiz * 2.0;
-	_bendLength0Verti = _structuralLength0Verti * 2.0;
+	_bendLength0Short = _structuralLength0Diago;
+	_bendLength0LongHoriz = sqrt(pow(_structuralLength0Horiz * 2.0, 2.0) + pow(_structuralLength0Verti, 2.0));
+	_bendLength0LongVerti = sqrt(pow(_structuralLength0Horiz, 2.0) + pow(_structuralLength0Verti * 2.0, 2.0));
 }
 
 void PBD_PlaneCloth::init(void)
@@ -84,7 +88,18 @@ void PBD_PlaneCloth::init(void)
 	for (int i = 0; i < _res[0]; i++) {
 		for (int j = 0; j < _res[1]; j++) {
 			int index = j * _res[0] + i;
-			_vertices.push_back(new Vertex(index, Vec3<double>(2.0 * i / (double)_res[0], 0.0, 2.0 * j / (double)_res[1]), Vec3<double>(0.0, 0.0, 0.0), 1.0));
+			_vertices[index] = new Vertex(index, Vec3<double>(2.0 * i / (double)_res[0], 0.0, 2.0 * j / (double)_res[1]), Vec3<double>(0.0, 0.0, 0.0), 1.0);
+		}
+	}
+}
+
+void PBD_PlaneCloth::reset(void)
+{
+	for (int i = 0; i < _res[0]; i++) {
+		for (int j = 0; j < _res[1]; j++) {
+			int index = j * _res[0] + i;
+			_vertices[index]->_pos.set(2.0 * i / (double)_res[0], 0.0, 2.0 * j / (double)_res[1]);
+			_vertices[index]->_vel.set(0.0, 0.0, 0.0);
 		}
 	}
 }
@@ -132,6 +147,13 @@ void PBD_PlaneCloth::updateStructuralSprings(void)
 			solveDistanceConstraint(index0, index1, _structuralLength0Verti);
 		}
 	}
+	for (int i = 0; i < _res[1] - 1; i++) {
+		for (int j = 0; j < _res[0] - 1; j++) {
+			int index0 = j * _res[0] + i;
+			int index1 = (j + 1) * _res[0] + (i + 1);
+			solveDistanceConstraint(index0, index1, _structuralLength0Diago);
+		}
+	}
 }
 
 void PBD_PlaneCloth::updateShearSprings(void)
@@ -165,18 +187,25 @@ void PBD_PlaneCloth::updateBendSprings(void)
 		}
 	}
 #else
-	for (int i = 0; i < _res[1]; i++) {
-		for (int j = 0; j < _res[0] - 2; j++) {
-			int index0 = j * _res[0] + i;
-			int index1 = (j + 2) * _res[0] + i;
-			solveDistanceConstraint(index0, index1, _bendLength0Horiz);
+	for (int i = 0; i < _res[1] - 1; i++) {
+		for (int j = 0; j < _res[0] - 1; j++) {
+			int index0 = (j + 1) * _res[0] + i;
+			int index1 = j * _res[0] + (i + 1);
+			solveDistanceConstraint(index0, index1, _bendLength0Short);
 		}
 	}
 	for (int i = 0; i < _res[1] - 2; i++) {
-		for (int j = 0; j < _res[0]; j++) {
+		for (int j = 0; j < _res[0] - 1; j++) {
 			int index0 = j * _res[0] + i;
-			int index1 = j * _res[0] + (i + 2);
-			solveDistanceConstraint(index0, index1, _bendLength0Verti);
+			int index1 = (j + 1) * _res[0] + (i + 2);
+			solveDistanceConstraint(index0, index1, _bendLength0LongHoriz);
+		}
+	}
+	for (int i = 0; i < _res[1] - 1; i++) {
+		for (int j = 0; j < _res[0] - 2; j++) {
+			int index0 = j * _res[0] + i;
+			int index1 = (j + 2) * _res[0] + (i + 1);
+			solveDistanceConstraint(index0, index1, _bendLength0LongVerti);
 		}
 	}
 #endif
@@ -314,6 +343,19 @@ void PBD_PlaneCloth::drawSpring(void)
 		for (int j = 0; j < _res[0]; j++) {
 			int index0 = j * _res[0] + i;
 			int index1 = j * _res[0] + (i + 1);
+			auto p1 = _vertices[index0]->_pos;
+			auto p2 = _vertices[index1]->_pos;
+			glBegin(GL_LINES);
+			glVertex3f(p1.x(), p1.y(), p1.z());
+			glVertex3f(p2.x(), p2.y(), p2.z());
+			glEnd();
+		}
+	}
+
+	for (int i = 0; i < _res[1] - 1; i++) {
+		for (int j = 0; j < _res[0] - 1; j++) {
+			int index0 = j * _res[0] + i;
+			int index1 = (j + 1) * _res[0] + (i + 1);
 			auto p1 = _vertices[index0]->_pos;
 			auto p2 = _vertices[index1]->_pos;
 			glBegin(GL_LINES);

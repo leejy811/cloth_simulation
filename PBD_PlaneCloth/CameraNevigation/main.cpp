@@ -174,7 +174,7 @@ void Keyboard(unsigned char key, int x, int y)
 		exit(0);
 	case 'r':
 	case 'R':
-		_pbd->init();
+		_pbd->reset();
 		break;
 	case 'f':
 	case 'F':
