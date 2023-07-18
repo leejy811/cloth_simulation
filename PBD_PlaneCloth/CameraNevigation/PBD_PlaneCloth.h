@@ -16,6 +16,7 @@ public:
 	//vector<double>	_bendingForce;
 	//vector<double>	_dihedralAngle;
 	vector<Vertex*> _vertices;
+	double test;
 	//vector<Face*> _faces;
 public:
 	double			_structuralLength0Horiz; // horizontal structural
