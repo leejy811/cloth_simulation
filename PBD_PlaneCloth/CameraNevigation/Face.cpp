@@ -19,4 +19,3 @@ int	Face::getIndex(Vertex* v)
 	}
 	return -1;
 }
-

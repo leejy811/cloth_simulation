@@ -18,14 +18,14 @@ public:
 	vector<Vertex*> _vertices;
 	vector<Face*> _faces;
 public:
-	double			_structuralLength0Horiz; // horizontal structural
-	double			_structuralLength0Verti; // vertical structural
-	double			_structuralLength0Diago; // vertical structural
-	double			_bendLength0Short; // horizontal bend
-	double			_bendLength0LongHoriz; // horizontal bend
-	double			_bendLength0LongVerti; // vertical bend
-	double			_shearLength0Horiz;	// horizontal shear
-	double			_shearLength0Verti;	// Vertical shear 
+	double			_structuralLength0Horiz;			// horizontal structural
+	double			_structuralLength0Verti;			// vertical structural
+	double			_structuralLength0Diago;		// vertical structural
+	double			_bendLength0Short;				// horizontal bend
+	double			_bendLength0LongHoriz;		// horizontal bend
+	double			_bendLength0LongVerti;			// vertical bend
+	double			_shearLength0Horiz;				// horizontal shear
+	double			_shearLength0Verti;				// Vertical shear 
 public:
 	PBD_PlaneCloth();
 	PBD_PlaneCloth(int width, int height);
@@ -35,6 +35,7 @@ public:
 public:
 	void	init(void);
 	void	reset(void);
+	void	buildAdjacency(void);
 	void	integrate(double dt);
 	void	simulation(double dt);
 	void	computeRestLength(void);
@@ -46,6 +47,7 @@ public:
 	void	computeWindForTriangle(vec3 wind, int index0, int index1, int index2);
 	void	applyExtForces(double dt);
 	void	solveDistanceConstraint(int index0, int index1, double restLength);
+	void solvePressureConstraint(double restVolume);
 	void	solveDihedralConstraint(int index0, int index1, int index2, int index3, double restAngle);
 public:
 	void	draw(void);

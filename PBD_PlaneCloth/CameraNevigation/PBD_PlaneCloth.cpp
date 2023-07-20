@@ -1,6 +1,7 @@
 #include "PBD_PlaneCloth.h"
 #include "GL\glut.h"
 #include <Windows.h>
+#include <stdio.h>
 
 //#define BEND_DIHEDRAL_ANGLE
 
@@ -14,8 +15,10 @@ PBD_PlaneCloth::PBD_PlaneCloth(int width, int height)
 	_res[1] = height;
 
 	_vertices.resize(_res[0] * _res[1]);
+	_faces.resize((_res[0] - 1) * (_res[1] - 1) * 2);
 
 	init();
+	//buildAdjacency();
 	computeRestLength();
 	//computeDihedralAngle();
 }
@@ -91,6 +94,17 @@ void PBD_PlaneCloth::init(void)
 			_vertices[index] = new Vertex(index, Vec3<double>(2.0 * i / (double)_res[0], 0.0, 2.0 * j / (double)_res[1]), Vec3<double>(0.0, 0.0, 0.0), 1.0);
 		}
 	}
+
+	for (int i = 0; i < _res[0] - 1; i++) {
+		for (int j = 0; j < _res[1] - 1; j++) {
+			int index0 = j * _res[0] + i;
+			int index1 = (j + 1) * _res[0] + i;
+			int index2 = j* _res[0] + (i + 1);
+			int index3 = (j + 1) * _res[0] + (i + 1);
+			_faces.push_back(new Face(_vertices[index0], _vertices[index1], _vertices[index3]));
+			_faces.push_back(new Face(_vertices[index0], _vertices[index2], _vertices[index3]));
+		}
+	}
 }
 
 void PBD_PlaneCloth::reset(void)
@@ -100,6 +114,36 @@ void PBD_PlaneCloth::reset(void)
 			int index = j * _res[0] + i;
 			_vertices[index]->_pos.set(2.0 * i / (double)_res[0], 0.0, 2.0 * j / (double)_res[1]);
 			_vertices[index]->_vel.set(0.0, 0.0, 0.0);
+		}
+	}
+}
+
+void PBD_PlaneCloth::buildAdjacency(void)
+{
+	for (auto v : _vertices) {
+		v->_nbFaces.clear();
+		v->_nbVertices.clear();
+	}
+
+	// v-f
+	for (auto f : _faces) {
+		for (int j = 0; j < 3; j++) {
+			f->_vertices[j]->_nbFaces.push_back(f);
+		}
+	}
+
+	// v-v
+	for (auto v : _vertices) {
+		for (auto nf : v->_nbFaces) {
+			auto pivot = nf->getIndex(v); // 0 : 1,2, 1 : 2,0, 2: 0,1
+			int other_id0 = (pivot + 1) % 3;
+			int other_id1 = (pivot + 2) % 3;
+			if (!v->hasNbVertex(nf->_vertices[other_id0])) {
+				v->_nbVertices.push_back(nf->_vertices[other_id0]);
+			}
+			if (!v->hasNbVertex(nf->_vertices[other_id1])) {
+				v->_nbVertices.push_back(nf->_vertices[other_id1]);
+			}
 		}
 	}
 }
@@ -117,17 +161,37 @@ void PBD_PlaneCloth::solveDistanceConstraint(int index0, int index1, double rest
 	_vertices[index1]->_pos1 += dp2;
 }
 
+void PBD_PlaneCloth::solvePressureConstraint(double restVolume)
+{
+	double c = -1.0 * restVolume;
+	vec3 gradC(0.0, 0.0, 0.0);
+
+	for (auto f : _faces) {
+		c += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1).dot(f->_vertices[2]->_pos1);
+		gradC += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1) + f->_vertices[1]->_pos1.cross(f->_vertices[2]->_pos1) + f->_vertices[0]->_pos1.cross(f->_vertices[2]->_pos1);
+	}
+
+	double s = 0;
+	for (auto v : _vertices) {
+		s += v->_invMass * pow(gradC.getNorm(), 2.0);
+	}
+
+	s = c / s;
+
+	vec3 dp = gradC * s * -1.0;
+	for (auto v : _vertices) {
+			v->_pos1 += dp * v->_invMass;
+	}
+}
+
 void PBD_PlaneCloth::applyExtForces(double dt)
 {
 	vec3 gravity(0.0, -9.8, 0.0);
 	double damping = 0.99;
-	for (int i = 0; i < _res[0]; i++) {
-		for (int j = 0; j < _res[1]; j++) {
-			int index = j * _res[0] + i;
-			_vertices[index]->_vel += gravity * dt * _vertices[index]->_invMass;
-			_vertices[index]->_vel *= damping;
-			_vertices[index]->_pos1 = _vertices[index]->_pos + (_vertices[index]->_vel * dt);
-		}
+	for (auto v : _vertices) {
+			v->_vel += gravity * dt * v->_invMass;
+			v->_vel *= damping;
+			v->_pos1 =v->_pos + (v->_vel * dt);
 	}
 }
 
@@ -213,8 +277,8 @@ void PBD_PlaneCloth::updateBendSprings(void)
 
 void PBD_PlaneCloth::integrate(double dt)
 {
-	for (int i = 1; i < _res[1]; i++) {
-		for (int j = 0; j < _res[0]; j++) {
+	for (int i = 1; i < _res[0]; i++) {
+		for (int j = 0; j < _res[1]; j++) {
 			int index = j * _res[0] + i;
 			_vertices[index]->_vel = (_vertices[index]->_pos1 - _vertices[index]->_pos) / dt;
 			_vertices[index]->_pos = _vertices[index]->_pos1;
@@ -226,12 +290,13 @@ void PBD_PlaneCloth::simulation(double dt)
 {
 	applyExtForces(dt);
 
-	int iter = 5;
+	int iter = 20;
 	for (int k = 0; k < iter; k++) {
 		updateStructuralSprings();
-		updateShearSprings();
+		//updateShearSprings();
 		updateBendSprings();
-	}	
+		//solvePressureConstraint(100.0);
+	}
 
 	integrate(dt);
 }

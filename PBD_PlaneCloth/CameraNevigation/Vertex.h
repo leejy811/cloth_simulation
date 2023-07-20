@@ -1,6 +1,5 @@
 #ifndef __VERTEX_H__
 #define __VERTEX_H__
-
 #pragma once
 #include "Vec3.h"
 #include <vector>
@@ -14,7 +13,7 @@ public:
 	int				_index;
 	Vec3<double>	_pos; // X,Y,Z
 	Vec3<double>	_pos1; // X,Y,Z
-	//Vec3<double>	_normal;
+	Vec3<double>	_normal;
 	Vec3<double> _vel;
 	double	_invMass;
 	vector<Face*>	_nbFaces; // Neighbor face
