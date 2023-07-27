@@ -12,6 +12,7 @@ using namespace std;
 class PBD_ObjectCloth
 {
 public:
+	//temp
 	Vec3<double>	_minBoundary;
 	Vec3<double>	_maxBoundary;
 	vector<Vertex*> _vertices;
