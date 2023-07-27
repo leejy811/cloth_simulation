@@ -39,7 +39,7 @@ public:
 	void	integrate(double dt);
 	void	simulation(double dt);
 	void	computeRestLength(void);
-	void	computeDihedralAngle(void);
+	//void	computeDihedralAngle(void);
 	void	updateBendSprings(void);
 	void	updateShearSprings(void);
 	void	updateStructuralSprings(void);
@@ -48,7 +48,7 @@ public:
 	void	applyExtForces(double dt);
 	void	solveDistanceConstraint(int index0, int index1, double restLength);
 	void solvePressureConstraint(double restVolume);
-	void	solveDihedralConstraint(int index0, int index1, int index2, int index3, double restAngle);
+	//void	solveDihedralConstraint(int index0, int index1, int index2, int index3, double restAngle);
 public:
 	void	draw(void);
 	void	drawSpring(void);

@@ -15,10 +15,9 @@ PBD_PlaneCloth::PBD_PlaneCloth(int width, int height)
 	_res[1] = height;
 
 	_vertices.resize(_res[0] * _res[1]);
-	_faces.resize((_res[0] - 1) * (_res[1] - 1) * 2);
 
 	init();
-	//buildAdjacency();
+	buildAdjacency();
 	computeRestLength();
 	//computeDihedralAngle();
 }
@@ -95,14 +94,15 @@ void PBD_PlaneCloth::init(void)
 		}
 	}
 
+	int index = 0;
 	for (int i = 0; i < _res[0] - 1; i++) {
 		for (int j = 0; j < _res[1] - 1; j++) {
 			int index0 = j * _res[0] + i;
 			int index1 = (j + 1) * _res[0] + i;
 			int index2 = j* _res[0] + (i + 1);
 			int index3 = (j + 1) * _res[0] + (i + 1);
-			_faces.push_back(new Face(_vertices[index0], _vertices[index1], _vertices[index3]));
-			_faces.push_back(new Face(_vertices[index0], _vertices[index2], _vertices[index3]));
+			_faces.push_back(new Face(index++, _vertices[index0], _vertices[index1], _vertices[index3]));
+			_faces.push_back(new Face(index++, _vertices[index0], _vertices[index2], _vertices[index3]));
 		}
 	}
 }

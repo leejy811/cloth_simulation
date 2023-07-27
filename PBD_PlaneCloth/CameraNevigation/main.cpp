@@ -2,10 +2,11 @@
 #include <iostream>
 #include "GL\glut.h"
 #include "PBD_PlaneCloth.h"
+#include "PBD_ObjectCloth.h"
 #include <ctime>
 
-int width = 600;
-int height = 600;
+int width = 800;
+int height = 800;
 float zoom = 15.0f;
 float rotx = 0;
 float roty = 0.001f;
@@ -16,21 +17,28 @@ int lasty = 0;
 unsigned char Buttons[3] = { 0 };
 bool simulation = false;
 
-PBD_PlaneCloth *_pbd;
+//PBD_PlaneCloth *_pbd;
+PBD_ObjectCloth * _pbd;
 
 void Init(void) 
 {
 	glEnable(GL_DEPTH_TEST);
-	_pbd = new PBD_PlaneCloth(60, 60);
+	//_pbd = new PBD_PlaneCloth(60, 60);
+	_pbd = new PBD_ObjectCloth("OBJ\\geoSphere.obj");
 }
 
 void Darw(void)
 {
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	//_pbd->draw();
+	/* Plane Cloth
+	_pbd->draw();
 	_pbd->drawSpring();
-	// ...
+	*/
+	
+	// Object Cloth
+	_pbd->drawSolid();
+
 	glDisable(GL_LIGHTING);
 }
 
@@ -87,11 +95,13 @@ void Display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 
+	/*
 	zoom = 5.699999;
 	tx = 0.350000;
 	ty = 1.500000;
 	rotx = 15.500000;
 	roty = -45.499001;
+	*/
 
 	glTranslatef(0, 0, -zoom);
 	glTranslatef(tx, ty, 0);
