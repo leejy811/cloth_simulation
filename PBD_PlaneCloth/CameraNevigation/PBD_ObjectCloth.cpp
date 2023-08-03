@@ -55,6 +55,7 @@ void PBD_ObjectCloth::loadObj(char* filename)
 	printf("num. faces : %d\n", _faces.size());
 	moveToCenter(3.0);
 	buildAdjacency();
+	selectFixVertex();
 	computeRestLength();
 	computeRestVolume();
 	computeNormal();
@@ -106,6 +107,20 @@ void PBD_ObjectCloth::buildAdjacency(void)
 				v->_nbVertices.push_back(nf->_vertices[other_id1]);
 			}
 		}
+	}
+}
+
+void PBD_ObjectCloth::selectFixVertex(void) {
+	double centerY = 0.0;
+
+	for (auto v : _vertices) {
+		centerY += v->_pos.y();
+	}
+	centerY /= _vertices.size();
+
+	for (auto v : _vertices) {
+		if (v->_pos.y() > centerY + 1.0)
+			_fixIndex.push_back(v->_index);
 	}
 }
 
@@ -199,7 +214,7 @@ void PBD_ObjectCloth::solvePressureConstraint(double restVolume)
 
 void PBD_ObjectCloth::applyExtForces(double dt)
 {
-	vec3 gravity(0.0, -0.5, 0.0);
+	vec3 gravity(0.0, -9.8, 0.0);
 	double damping = 0.99;
 	for (auto v : _vertices) {
 		v->_vel += gravity * dt * v->_invMass;
@@ -253,6 +268,16 @@ void PBD_ObjectCloth::updateBendSprings(void)
 void PBD_ObjectCloth::integrate(double dt)
 {
 	for (auto v : _vertices) {
+		bool fix = false;
+		for (auto i : _fixIndex) {
+			if (i == v->_index) {
+				fix = true;
+				break;
+			}
+		}
+
+		if (fix)
+			break;
 		v->_vel = (v->_pos1 - v->_pos) / dt;
 		v->_pos = v->_pos1;
 	}
@@ -289,6 +314,19 @@ void PBD_ObjectCloth::applyWind(vec3 wind)
 {
 	for (auto f : _faces) {
 		computeWindForTriangle(wind, f);
+	}
+}
+
+void	PBD_ObjectCloth::applyBallon(void) {
+	for (auto f : _faces) {
+		auto p0 = f->_vertices[0]->_pos1;
+		auto p1 = f->_vertices[1]->_pos1;
+		auto p2 = f->_vertices[2]->_pos1;
+		auto normal = (p1 - p0).cross(p2 - p0);
+		normal.normalize();
+		f->_vertices[0]->_vel += normal;
+		f->_vertices[0]->_vel += normal;
+		f->_vertices[0]->_vel += normal;
 	}
 }
 

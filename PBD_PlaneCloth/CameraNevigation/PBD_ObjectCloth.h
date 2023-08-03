@@ -17,6 +17,7 @@ public:
 	Vec3<double>	_maxBoundary;
 	vector<Vertex*> _vertices;
 	vector<Face*> _faces;
+	vector<int> _fixIndex;
 public:
 	double			_restVolume;
 public:
@@ -31,15 +32,18 @@ public:
 	void	loadObj(char* filename);
 	void moveToCenter(double scale);
 	void	buildAdjacency(void);
+	void selectFixVertex(void);
 	void	integrate(double dt);
 	void	simulation(double dt);
 	void	computeRestLength(void);
 	void computeRestVolume(void);
 	void	computeNormal(void);
+	void computeCenter(void);
 	void	updateBendSprings(void);
 	//void	updateShearSprings(void);
 	void	updateStructuralSprings(void);
 	void	applyWind(vec3 wind);
+	void	applyBallon(void);
 	void	computeWindForTriangle(vec3 wind, Face* f);
 	void	applyExtForces(double dt);
 	void	solveDistanceConstraint(int index0, int index1, double restLength);

@@ -24,7 +24,7 @@ void Init(void)
 {
 	glEnable(GL_DEPTH_TEST);
 	//_pbd = new PBD_PlaneCloth(60, 60);
-	_pbd = new PBD_ObjectCloth("OBJ\\geoSphere.obj");
+	_pbd = new PBD_ObjectCloth("OBJ\\Bunny_close.obj");
 }
 
 void Darw(void)
@@ -189,6 +189,10 @@ void Keyboard(unsigned char key, int x, int y)
 	case 'f':
 	case 'F':
 		_pbd->applyWind(Vec3<double>(-0.5, -0.25, -0.25));
+		break;
+	case 'v':
+	case 'V':
+		_pbd->applyBallon();
 		break;
 	case ' ':
 		simulation = !simulation;
