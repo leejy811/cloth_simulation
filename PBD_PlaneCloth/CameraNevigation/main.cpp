@@ -194,6 +194,10 @@ void Keyboard(unsigned char key, int x, int y)
 	case 'V':
 		_pbd->applyBallon();
 		break;
+	case 'c':
+	case 'C':
+		_pbd->applyAirRelease();
+		break;
 	case ' ':
 		simulation = !simulation;
 		break;

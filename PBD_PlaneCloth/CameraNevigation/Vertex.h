@@ -15,6 +15,7 @@ public:
 	Vec3<double>	_pos1; // X,Y,Z
 	Vec3<double>	_normal;
 	Vec3<double> _vel;
+	Vec3<double> _volGradC;
 	double	_invMass;
 	vector<Face*>	_nbFaces; // Neighbor face
 	vector<Vertex*>	_nbVertices; // Neighbor vertex

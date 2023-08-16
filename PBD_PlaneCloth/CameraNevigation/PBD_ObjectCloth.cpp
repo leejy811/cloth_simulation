@@ -2,6 +2,7 @@
 #include "GL\glut.h"
 #include <Windows.h>
 #include <stdio.h>
+#include <iostream>
 
 PBD_ObjectCloth::PBD_ObjectCloth()
 {
@@ -55,7 +56,7 @@ void PBD_ObjectCloth::loadObj(char* filename)
 	printf("num. faces : %d\n", _faces.size());
 	moveToCenter(3.0);
 	buildAdjacency();
-	selectFixVertex();
+	//selectFixVertex();
 	computeRestLength();
 	computeRestVolume();
 	computeNormal();
@@ -114,13 +115,13 @@ void PBD_ObjectCloth::selectFixVertex(void) {
 	double centerY = 0.0;
 
 	for (auto v : _vertices) {
-		centerY += v->_pos.y();
+		centerY += v->y();
 	}
-	centerY /= _vertices.size();
-
+	centerY /= (double)_vertices.size();
 	for (auto v : _vertices) {
-		if (v->_pos.y() > centerY + 1.0)
+		if (v->y() > centerY + 1.5) {
 			_fixIndex.push_back(v->_index);
+		}
 	}
 }
 
@@ -185,36 +186,47 @@ void PBD_ObjectCloth::solveDistanceConstraint(int index0, int index1, double res
 	dp2.normalize();
 	dp1 *= -_vertices[index0]->_invMass / (_vertices[index0]->_invMass + _vertices[index1]->_invMass) * c_p1p2;
 	dp2 *= _vertices[index1]->_invMass / (_vertices[index0]->_invMass + _vertices[index1]->_invMass) * c_p1p2;
+	dp1 *= 1.0 - pow((1.0 - _springK), 1.0 / _iteration);
+	dp2 *= 1.0 - pow((1.0 - _springK), 1.0 / _iteration);
 	_vertices[index0]->_pos1 += dp1;
 	_vertices[index1]->_pos1 += dp2;
 }
 
 void PBD_ObjectCloth::solvePressureConstraint(double restVolume)
 {
-	double c = -1.0 * restVolume;
-	vec3 gradC(0.0, 0.0, 0.0);
+	double c = -1.0 * restVolume * _volumeK;
 
 	for (auto f : _faces) {
 		c += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1).dot(f->_vertices[2]->_pos1);
-		gradC += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1) + f->_vertices[1]->_pos1.cross(f->_vertices[2]->_pos1) + f->_vertices[0]->_pos1.cross(f->_vertices[2]->_pos1);
+		//gradC += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1) + f->_vertices[1]->_pos1.cross(f->_vertices[2]->_pos1) + f->_vertices[0]->_pos1.cross(f->_vertices[2]->_pos1);
+	}
+
+	for (auto v : _vertices) {
+		v->_volGradC = vec3(0.0, 0.0, 0.0);
+		for (auto nf : v->_nbFaces) {
+			int idx = nf->getIndex(v);
+			int id0 = (idx + 1) % 3;
+			int id1 = (idx + 2) % 3;
+			v->_volGradC += nf->_vertices[id0]->_pos1.cross(nf->_vertices[id1]->_pos1);
+		}
 	}
 
 	double s = 0;
 	for (auto v : _vertices) {
-		s += v->_invMass * pow(gradC.getNorm(), 2.0);
+		s += v->_invMass * pow(v->_volGradC.getNorm(), 2.0);
 	}
 
 	s = c / s;
 
-	vec3 dp = gradC * s * -1.0;
 	for (auto v : _vertices) {
+		vec3 dp = v->_volGradC * s * -1.0;
 		v->_pos1 += dp * v->_invMass;
 	}
 }
 
 void PBD_ObjectCloth::applyExtForces(double dt)
 {
-	vec3 gravity(0.0, -9.8, 0.0);
+	vec3 gravity(0.0, -0.1, 0.0);
 	double damping = 0.99;
 	for (auto v : _vertices) {
 		v->_vel += gravity * dt * v->_invMass;
@@ -267,19 +279,20 @@ void PBD_ObjectCloth::updateBendSprings(void)
 
 void PBD_ObjectCloth::integrate(double dt)
 {
-	for (auto v : _vertices) {
+	for (int i = 0; i < _vertices.size();i++) {
 		bool fix = false;
-		for (auto i : _fixIndex) {
-			if (i == v->_index) {
+
+		for (auto j : _fixIndex) {
+			if (_vertices[i] == _vertices[j]) {
 				fix = true;
 				break;
 			}
 		}
 
 		if (fix)
-			break;
-		v->_vel = (v->_pos1 - v->_pos) / dt;
-		v->_pos = v->_pos1;
+			continue;
+		_vertices[i]->_vel = (_vertices[i]->_pos1 - _vertices[i]->_pos) / dt;
+		_vertices[i]->_pos = _vertices[i]->_pos1;
 	}
 }
 
@@ -287,11 +300,10 @@ void PBD_ObjectCloth::simulation(double dt)
 {
 	applyExtForces(dt);
 
-	int iter = 20;
-	for (int k = 0; k < iter; k++) {
+	for (int k = 0; k < _iteration; k++) {
 		updateStructuralSprings();
 		updateBendSprings();
-		solvePressureConstraint(_restVolume);
+		solvePressureConstraint(_restVolume + _addVolume);
 	}
 
 	integrate(dt);
@@ -318,7 +330,10 @@ void PBD_ObjectCloth::applyWind(vec3 wind)
 }
 
 void	PBD_ObjectCloth::applyBallon(void) {
-	for (auto f : _faces) {
+	_addVolume += 1.0;
+
+	/*
+		for (auto f : _faces) {
 		auto p0 = f->_vertices[0]->_pos1;
 		auto p1 = f->_vertices[1]->_pos1;
 		auto p2 = f->_vertices[2]->_pos1;
@@ -328,6 +343,13 @@ void	PBD_ObjectCloth::applyBallon(void) {
 		f->_vertices[0]->_vel += normal;
 		f->_vertices[0]->_vel += normal;
 	}
+	*/
+}
+
+void	PBD_ObjectCloth::applyAirRelease(void) {
+	if (_addVolume < -10.0)
+		return;
+	_addVolume -= 1.0;
 }
 
 void PBD_ObjectCloth::drawPoint(void)

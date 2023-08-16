@@ -20,6 +20,10 @@ public:
 	vector<int> _fixIndex;
 public:
 	double			_restVolume;
+	double			_addVolume;
+	double			_iteration = 5.0;
+	double			_springK = 0.1;
+	double			_volumeK = 0.99;
 public:
 	PBD_ObjectCloth();
 	PBD_ObjectCloth(char* filename)
@@ -44,6 +48,7 @@ public:
 	void	updateStructuralSprings(void);
 	void	applyWind(vec3 wind);
 	void	applyBallon(void);
+	void	applyAirRelease(void);
 	void	computeWindForTriangle(vec3 wind, Face* f);
 	void	applyExtForces(double dt);
 	void	solveDistanceConstraint(int index0, int index1, double restLength);
