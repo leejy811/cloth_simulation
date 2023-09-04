@@ -198,7 +198,6 @@ void PBD_ObjectCloth::solvePressureConstraint(double restVolume)
 
 	for (auto f : _faces) {
 		c += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1).dot(f->_vertices[2]->_pos1);
-		//gradC += f->_vertices[0]->_pos1.cross(f->_vertices[1]->_pos1) + f->_vertices[1]->_pos1.cross(f->_vertices[2]->_pos1) + f->_vertices[0]->_pos1.cross(f->_vertices[2]->_pos1);
 	}
 
 	for (auto v : _vertices) {
@@ -226,10 +225,19 @@ void PBD_ObjectCloth::solvePressureConstraint(double restVolume)
 
 void PBD_ObjectCloth::applyExtForces(double dt)
 {
-	vec3 gravity(0.0, -0.1, 0.0);
+	double volume = 0.0;
+
+	for (auto f : _faces) {
+		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
+	}
+
+	vec3 gravity(0.0, -9.8, 0.0);
+	vec3 buoyancy = gravity * volume * 0.02 * -1.0;
 	double damping = 0.99;
+
 	for (auto v : _vertices) {
-		v->_vel += gravity * dt * v->_invMass;
+		v->_vel += gravity * dt;
+		v->_vel += buoyancy * dt * v->_invMass;
 		v->_vel *= damping;
 		v->_pos1 = v->_pos + (v->_vel * dt);
 	}
@@ -277,6 +285,20 @@ void PBD_ObjectCloth::updateBendSprings(void)
 #endif
 }
 
+void PBD_ObjectCloth::updateMass(void) {
+	double volume = 0.0;
+
+	for (auto f : _faces) {
+		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
+	}
+
+	double mass = volume * 1.29;
+
+	for (auto v : _vertices) {
+		v->_invMass = 1.0 / (1.0 + (mass / _vertices.size()));
+	}
+}
+
 void PBD_ObjectCloth::integrate(double dt)
 {
 	for (int i = 0; i < _vertices.size();i++) {
@@ -298,6 +320,7 @@ void PBD_ObjectCloth::integrate(double dt)
 
 void PBD_ObjectCloth::simulation(double dt)
 {
+	updateMass();
 	applyExtForces(dt);
 
 	for (int k = 0; k < _iteration; k++) {
@@ -347,7 +370,7 @@ void	PBD_ObjectCloth::applyBallon(void) {
 }
 
 void	PBD_ObjectCloth::applyAirRelease(void) {
-	if (_addVolume < -10.0)
+	if (_addVolume < -20.0)
 		return;
 	_addVolume -= 1.0;
 }

@@ -22,7 +22,7 @@ public:
 	double			_restVolume;
 	double			_addVolume;
 	double			_iteration = 5.0;
-	double			_springK = 0.1;
+	double			_springK = 0.3;
 	double			_volumeK = 0.99;
 public:
 	PBD_ObjectCloth();
@@ -44,8 +44,8 @@ public:
 	void	computeNormal(void);
 	void computeCenter(void);
 	void	updateBendSprings(void);
-	//void	updateShearSprings(void);
 	void	updateStructuralSprings(void);
+	void updateMass(void);
 	void	applyWind(vec3 wind);
 	void	applyBallon(void);
 	void	applyAirRelease(void);
