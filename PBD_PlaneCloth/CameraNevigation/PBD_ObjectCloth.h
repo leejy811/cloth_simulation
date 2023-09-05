@@ -24,6 +24,8 @@ public:
 	double			_iteration = 5.0;
 	double			_springK = 0.3;
 	double			_volumeK = 0.99;
+	double			_pressure;
+	bool				_isAirRelease = false;
 public:
 	PBD_ObjectCloth();
 	PBD_ObjectCloth(char* filename)
@@ -46,9 +48,11 @@ public:
 	void	updateBendSprings(void);
 	void	updateStructuralSprings(void);
 	void updateMass(void);
+	void updatePressure(void);
 	void	applyWind(vec3 wind);
 	void	applyBallon(void);
 	void	applyAirRelease(void);
+	void	onAirRelease(void);
 	void	computeWindForTriangle(vec3 wind, Face* f);
 	void	applyExtForces(double dt);
 	void	solveDistanceConstraint(int index0, int index1, double restLength);

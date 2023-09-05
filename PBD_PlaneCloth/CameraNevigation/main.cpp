@@ -196,7 +196,7 @@ void Keyboard(unsigned char key, int x, int y)
 		break;
 	case 'c':
 	case 'C':
-		_pbd->applyAirRelease();
+		_pbd->onAirRelease();
 		break;
 	case ' ':
 		simulation = !simulation;

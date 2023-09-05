@@ -226,18 +226,34 @@ void PBD_ObjectCloth::solvePressureConstraint(double restVolume)
 void PBD_ObjectCloth::applyExtForces(double dt)
 {
 	double volume = 0.0;
+	double area = 0.0;
+	vec3 reaction(0.0, 0.0, 0.0);
 
 	for (auto f : _faces) {
 		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
+		auto a = f->_vertices[0]->_pos;
+		auto b = f->_vertices[1]->_pos;
+		auto c = f->_vertices[2]->_pos;
+		auto normal = (a - b).cross(a - c);
+		area += normal.getNorm() / 2.0;
+	}
+
+	if (_isAirRelease) {
+		reaction = _vertices[_vertices.size() / 5]->_nbFaces[0]->_normal * -40.0;
 	}
 
 	vec3 gravity(0.0, -9.8, 0.0);
-	vec3 buoyancy = gravity * volume * 0.02 * -1.0;
+	vec3 buoyancy = gravity * volume * (0.02) * -1.0;
 	double damping = 0.99;
 
 	for (auto v : _vertices) {
+		vec3 airDrag = v->_vel * -0.5 * 0.5 * 1.205 * area;
+
+		if(_isAirRelease)
+			v->_vel += reaction * dt * v->_invMass;
 		v->_vel += gravity * dt;
 		v->_vel += buoyancy * dt * v->_invMass;
+		v->_vel += airDrag * dt * v->_invMass;
 		v->_vel *= damping;
 		v->_pos1 = v->_pos + (v->_vel * dt);
 	}
@@ -292,11 +308,21 @@ void PBD_ObjectCloth::updateMass(void) {
 		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
 	}
 
-	double mass = volume * 1.29;
+	double mass = volume * 1.205;
 
 	for (auto v : _vertices) {
 		v->_invMass = 1.0 / (1.0 + (mass / _vertices.size()));
 	}
+}
+
+void PBD_ObjectCloth::updatePressure(void) {
+	double volume = 0.0;
+
+	for (auto f : _faces) {
+		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
+	}
+
+	_pressure = (4.0 * 2077 * 294.15) / volume;
 }
 
 void PBD_ObjectCloth::integrate(double dt)
@@ -313,6 +339,7 @@ void PBD_ObjectCloth::integrate(double dt)
 
 		if (fix)
 			continue;
+
 		_vertices[i]->_vel = (_vertices[i]->_pos1 - _vertices[i]->_pos) / dt;
 		_vertices[i]->_pos = _vertices[i]->_pos1;
 	}
@@ -321,7 +348,9 @@ void PBD_ObjectCloth::integrate(double dt)
 void PBD_ObjectCloth::simulation(double dt)
 {
 	updateMass();
+	updatePressure();
 	applyExtForces(dt);
+	applyAirRelease();
 
 	for (int k = 0; k < _iteration; k++) {
 		updateStructuralSprings();
@@ -353,25 +382,22 @@ void PBD_ObjectCloth::applyWind(vec3 wind)
 }
 
 void	PBD_ObjectCloth::applyBallon(void) {
+	_isAirRelease = false;
 	_addVolume += 1.0;
+}
 
-	/*
-		for (auto f : _faces) {
-		auto p0 = f->_vertices[0]->_pos1;
-		auto p1 = f->_vertices[1]->_pos1;
-		auto p2 = f->_vertices[2]->_pos1;
-		auto normal = (p1 - p0).cross(p2 - p0);
-		normal.normalize();
-		f->_vertices[0]->_vel += normal;
-		f->_vertices[0]->_vel += normal;
-		f->_vertices[0]->_vel += normal;
-	}
-	*/
+void	PBD_ObjectCloth::onAirRelease(void) {
+	_isAirRelease = !_isAirRelease;
 }
 
 void	PBD_ObjectCloth::applyAirRelease(void) {
-	if (_addVolume < -20.0)
+	if (!_isAirRelease) return;
+
+	if (_addVolume < -20.0) {
+		_isAirRelease = false;
 		return;
+	}
+
 	_addVolume -= 1.0;
 }
 
