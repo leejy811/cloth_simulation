@@ -177,6 +177,12 @@ void	PBD_ObjectCloth::computeNormal(void) {
 	}
 }
 
+void	PBD_ObjectCloth::computeBernoulliConst(void) {
+	_pressure = ((_addVolume + 20) * 4 * 2077 * 294.15) / _restVolume;
+
+	_bernoulliConst = _pressure + 1.205 * 9.8 * abs(_vertices[_vertices.size() / 5]->y());
+}
+
 void PBD_ObjectCloth::solveDistanceConstraint(int index0, int index1, double restlength)
 {
 	double c_p1p2 = (_vertices[index0]->_pos1 - _vertices[index1]->_pos1).length() - restlength;
@@ -239,7 +245,8 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 	}
 
 	if (_isAirRelease) {
-		reaction = _vertices[_vertices.size() / 5]->_nbFaces[0]->_normal * -40.0;
+		reaction = sqrt(abs((_bernoulliConst - _pressure - (1.205 * 9.8 * abs(_vertices[_vertices.size() / 5]->y()))) * 2 / 1.205));
+		reaction *= _vertices[_vertices.size() / 5]->_normal * -0.05;
 	}
 
 	vec3 gravity(0.0, -9.8, 0.0);
@@ -247,10 +254,10 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 	double damping = 0.99;
 
 	for (auto v : _vertices) {
-		vec3 airDrag = v->_vel * -0.5 * 0.5 * 1.205 * area;
+		vec3 airDrag = v->_vel * -1.0 * 0.5 * 1.205 * area;
 
 		if(_isAirRelease)
-			v->_vel += reaction * dt * v->_invMass;
+			v->_vel += reaction * dt;
 		v->_vel += gravity * dt;
 		v->_vel += buoyancy * dt * v->_invMass;
 		v->_vel += airDrag * dt * v->_invMass;
@@ -322,7 +329,7 @@ void PBD_ObjectCloth::updatePressure(void) {
 		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
 	}
 
-	_pressure = (4.0 * 2077 * 294.15) / volume;
+	_pressure = ((_addVolume + 20) * 4 * 2077 * 294.15) / volume;
 }
 
 void PBD_ObjectCloth::integrate(double dt)
@@ -393,7 +400,7 @@ void	PBD_ObjectCloth::onAirRelease(void) {
 void	PBD_ObjectCloth::applyAirRelease(void) {
 	if (!_isAirRelease) return;
 
-	if (_addVolume < -20.0) {
+	if (_pressure < 1013 * 1000) {
 		_isAirRelease = false;
 		return;
 	}

@@ -25,6 +25,7 @@ public:
 	double			_springK = 0.3;
 	double			_volumeK = 0.99;
 	double			_pressure;
+	double			_bernoulliConst;
 	bool				_isAirRelease = false;
 public:
 	PBD_ObjectCloth();
@@ -44,7 +45,7 @@ public:
 	void	computeRestLength(void);
 	void computeRestVolume(void);
 	void	computeNormal(void);
-	void computeCenter(void);
+	void	computeBernoulliConst(void);
 	void	updateBendSprings(void);
 	void	updateStructuralSprings(void);
 	void updateMass(void);
