@@ -119,7 +119,7 @@ void PBD_ObjectCloth::selectFixVertex(void) {
 	}
 	centerY /= (double)_vertices.size();
 	for (auto v : _vertices) {
-		if (v->y() > centerY + 1.5) {
+		if (v->_index < 100) {
 			_fixIndex.push_back(v->_index);
 		}
 	}
@@ -246,7 +246,7 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 
 	if (_isAirRelease) {
 		reaction = sqrt(abs((_bernoulliConst - _pressure - (1.205 * 9.8 * abs(_vertices[_vertices.size() / 5]->y()))) * 2 / 1.205));
-		reaction *= _vertices[_vertices.size() / 5]->_normal * -0.05;
+		reaction *= _vertices[_vertices.size() / 5]->_normal * -0.03;
 	}
 
 	vec3 gravity(0.0, -9.8, 0.0);
@@ -254,10 +254,13 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 	double damping = 0.99;
 
 	for (auto v : _vertices) {
-		vec3 airDrag = v->_vel * -1.0 * 0.5 * 1.205 * area;
+		vec3 airDrag = v->_vel * -0.5 * 0.5 * 1.205 * area;
+		double dot = v->_vel.dot(v->_normal) / v->_vel.getNorm();
+		airDrag *= dot >= 0 ? dot : 0;
 
-		if(_isAirRelease)
+		if (_isAirRelease) {
 			v->_vel += reaction * dt;
+		}
 		v->_vel += gravity * dt;
 		v->_vel += buoyancy * dt * v->_invMass;
 		v->_vel += airDrag * dt * v->_invMass;
@@ -332,6 +335,26 @@ void PBD_ObjectCloth::updatePressure(void) {
 	_pressure = ((_addVolume + 20) * 4 * 2077 * 294.15) / volume;
 }
 
+void PBD_ObjectCloth::updateNormal(void) {
+	for (auto f : _faces) {
+		auto a = f->_vertices[0]->_pos;
+		auto b = f->_vertices[1]->_pos;
+		auto c = f->_vertices[2]->_pos;
+		auto normal = (a - b).cross(a - c);
+		normal.normalize();
+		f->_normal = normal;
+	}
+
+	// v-normal
+	for (auto v : _vertices) {
+		v->_normal.clear();
+		for (auto nf : v->_nbFaces) {
+			v->_normal += nf->_normal;
+		}
+		v->_normal /= v->_nbFaces.size();
+	}
+}
+
 void PBD_ObjectCloth::integrate(double dt)
 {
 	for (int i = 0; i < _vertices.size();i++) {
@@ -354,6 +377,7 @@ void PBD_ObjectCloth::integrate(double dt)
 
 void PBD_ObjectCloth::simulation(double dt)
 {
+	updateNormal();
 	updateMass();
 	updatePressure();
 	applyExtForces(dt);
@@ -405,7 +429,7 @@ void	PBD_ObjectCloth::applyAirRelease(void) {
 		return;
 	}
 
-	_addVolume -= 1.0;
+	_addVolume -= _pressure / 1013000;
 }
 
 void PBD_ObjectCloth::drawPoint(void)

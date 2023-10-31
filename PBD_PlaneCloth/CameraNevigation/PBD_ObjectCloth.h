@@ -22,7 +22,7 @@ public:
 	double			_restVolume;
 	double			_addVolume;
 	double			_iteration = 5.0;
-	double			_springK = 0.3;
+	double			_springK = 0.7;
 	double			_volumeK = 0.99;
 	double			_pressure;
 	double			_bernoulliConst;
@@ -50,6 +50,7 @@ public:
 	void	updateStructuralSprings(void);
 	void updateMass(void);
 	void updatePressure(void);
+	void updateNormal(void);
 	void	applyWind(vec3 wind);
 	void	applyBallon(void);
 	void	applyAirRelease(void);

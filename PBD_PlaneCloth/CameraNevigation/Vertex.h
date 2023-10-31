@@ -17,6 +17,7 @@ public:
 	Vec3<double> _vel;
 	Vec3<double> _volGradC;
 	double	_invMass;
+	double	_airDrag;
 	vector<Face*>	_nbFaces; // Neighbor face
 	vector<Vertex*>	_nbVertices; // Neighbor vertex
 public:
