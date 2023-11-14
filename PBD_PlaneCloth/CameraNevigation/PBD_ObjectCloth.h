@@ -5,6 +5,9 @@
 #include "Vec3.h"
 #include "Vertex.h"
 #include "Face.h"
+#include "Quaternion.h"
+#include "Matrix3.h"
+#include "Matrix4.h"
 #include <vector>
 
 using namespace std;
@@ -18,6 +21,7 @@ public:
 	vector<Vertex*> _vertices;
 	vector<Face*> _faces;
 	vector<int> _fixIndex;
+	Matrix3 _inverseTensor;
 public:
 	double			_restVolume;
 	double			_addVolume;
@@ -27,6 +31,7 @@ public:
 	double			_pressure;
 	double			_bernoulliConst;
 	bool				_isAirRelease = false;
+
 public:
 	PBD_ObjectCloth();
 	PBD_ObjectCloth(char* filename)
@@ -46,6 +51,7 @@ public:
 	void computeRestVolume(void);
 	void	computeNormal(void);
 	void	computeBernoulliConst(void);
+	void	computeInverseTensor(void);
 	void	updateBendSprings(void);
 	void	updateStructuralSprings(void);
 	void updateMass(void);

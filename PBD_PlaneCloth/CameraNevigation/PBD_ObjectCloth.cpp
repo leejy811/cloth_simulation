@@ -183,6 +183,28 @@ void	PBD_ObjectCloth::computeBernoulliConst(void) {
 	_bernoulliConst = _pressure + 1.205 * 9.8 * abs(_vertices[_vertices.size() / 5]->y());
 }
 
+void	PBD_ObjectCloth::computeInverseTensor(void) {
+	double ix = 0.0, iy = 0.0, iz = 0.0, ixy = 0.0, ixz = 0.0, iyz = 0.0;
+
+	vec3 massCenter(0.0, 0.0, 0.0);
+	for (auto v : _vertices) {
+		massCenter += v->_pos;
+	}
+	massCenter /= _vertices.size();
+
+	for (auto v : _vertices) {
+		ix = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(1, 0, 0)));
+		iy = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 1, 0))) * ((v->_pos - massCenter).dot(vec3(0, 1, 0)));
+		iz = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 0, 1))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
+		ixy = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(0, 1, 0)));
+		ixz = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
+		iyz = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 1, 0))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
+	}
+
+	_inverseTensor.setInertiaTensorCoeffs(ix, iy, iz, ixy, ixz, iyz);
+	_inverseTensor.invert();
+}
+
 void PBD_ObjectCloth::solveDistanceConstraint(int index0, int index1, double restlength)
 {
 	double c_p1p2 = (_vertices[index0]->_pos1 - _vertices[index1]->_pos1).length() - restlength;
@@ -253,6 +275,16 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 	vec3 buoyancy = gravity * volume * (0.02) * -1.0;
 	double damping = 0.99;
 
+	vec3 massCenter(0.0, 0.0, 0.0);
+	for (auto v : _vertices) {
+		massCenter += v->_pos;
+	}
+	massCenter /= _vertices.size();
+
+	printf("mass Center : (%f, %f, %f)\n", massCenter.x(), massCenter.y(), massCenter.z());
+
+	vec3 torque = (_vertices[_vertices.size() / 5]->_pos - massCenter).cross(reaction);
+
 	for (auto v : _vertices) {
 		vec3 airDrag = v->_vel * -0.5 * 0.5 * 1.205 * area;
 		double dot = v->_vel.dot(v->_normal) / v->_vel.getNorm();
@@ -266,6 +298,12 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 		v->_vel += airDrag * dt * v->_invMass;
 		v->_vel *= damping;
 		v->_pos1 = v->_pos + (v->_vel * dt);
+
+		v->_angVel += Quaternion(_inverseTensor * torque) * dt;
+		v->_orientation += v->_angVel * v->_orientation * dt;
+		Matrix3 rotateMatrix;
+		rotateMatrix.setOrientation(v->_orientation);
+		v->_pos1 = rotateMatrix * v->_pos1;
 	}
 }
 

@@ -88,8 +88,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Face.h" />
+    <ClInclude Include="Matrix3.h" />
+    <ClInclude Include="Matrix4.h" />
     <ClInclude Include="PBD_ObjectCloth.h" />
     <ClInclude Include="PBD_PlaneCloth.h" />
+    <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Vec3.h" />
     <ClInclude Include="Vertex.h" />
   </ItemGroup>

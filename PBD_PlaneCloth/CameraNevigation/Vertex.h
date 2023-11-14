@@ -2,6 +2,7 @@
 #define __VERTEX_H__
 #pragma once
 #include "Vec3.h"
+#include "Quaternion.h"
 #include <vector>
 
 using namespace std;
@@ -15,6 +16,8 @@ public:
 	Vec3<double>	_pos1; // X,Y,Z
 	Vec3<double>	_normal;
 	Vec3<double> _vel;
+	Quaternion _angVel;
+	Quaternion _orientation;
 	Vec3<double> _volGradC;
 	double	_invMass;
 	double	_airDrag;

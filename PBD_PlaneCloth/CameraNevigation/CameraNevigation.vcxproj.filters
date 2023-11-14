@@ -47,5 +47,14 @@
     <ClInclude Include="PBD_ObjectCloth.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Quaternion.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix4.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix3.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
