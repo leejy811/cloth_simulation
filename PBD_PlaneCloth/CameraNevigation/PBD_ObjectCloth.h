@@ -22,6 +22,7 @@ public:
 	vector<Face*> _faces;
 	vector<int> _fixIndex;
 	Matrix3 _inverseTensor;
+	Matrix3 _inverseTensorWorld;
 public:
 	double			_restVolume;
 	double			_addVolume;
@@ -31,7 +32,6 @@ public:
 	double			_pressure;
 	double			_bernoulliConst;
 	bool				_isAirRelease = false;
-
 public:
 	PBD_ObjectCloth();
 	PBD_ObjectCloth(char* filename)
@@ -65,6 +65,8 @@ public:
 	void	applyExtForces(double dt);
 	void	solveDistanceConstraint(int index0, int index1, double restLength);
 	void solvePressureConstraint(double restVolume);
+	void TransformInertiaTensor(Matrix3& iitWorld, const Quaternion& q, const Matrix3& iitBody, const Matrix4& rotmat);
+	void CalculateTransformMatrix(Matrix4& transformMatrix, const vec3& position, const Quaternion& orientation);
 public:
 	void	drawWire(void);
 	void	drawSolid(void);

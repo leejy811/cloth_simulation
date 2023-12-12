@@ -60,6 +60,7 @@ void PBD_ObjectCloth::loadObj(char* filename)
 	computeRestLength();
 	computeRestVolume();
 	computeNormal();
+	computeInverseTensor();
 	fclose(fp);
 }
 
@@ -187,22 +188,32 @@ void	PBD_ObjectCloth::computeInverseTensor(void) {
 	double ix = 0.0, iy = 0.0, iz = 0.0, ixy = 0.0, ixz = 0.0, iyz = 0.0;
 
 	vec3 massCenter(0.0, 0.0, 0.0);
-	for (auto v : _vertices) {
+	Quaternion orientation(0.0, 0.0, 0.0, 0.0);
+	for (auto v : _vertices)
+	{
 		massCenter += v->_pos;
+		orientation += v->_orientation;
 	}
 	massCenter /= _vertices.size();
+	orientation /= _vertices.size();
 
-	for (auto v : _vertices) {
-		ix = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(1, 0, 0)));
-		iy = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 1, 0))) * ((v->_pos - massCenter).dot(vec3(0, 1, 0)));
-		iz = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 0, 1))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
-		ixy = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(0, 1, 0)));
-		ixz = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
-		iyz = (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 1, 0))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
+	for (auto v : _vertices)
+	{
+		ix += (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(1, 0, 0)));
+		iy += (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 1, 0))) * ((v->_pos - massCenter).dot(vec3(0, 1, 0)));
+		iz += (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 0, 1))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
+		ixy += (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(0, 1, 0)));
+		ixz += (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(1, 0, 0))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
+		iyz += (1 / v->_invMass) * ((v->_pos - massCenter).dot(vec3(0, 1, 0))) * ((v->_pos - massCenter).dot(vec3(0, 0, 1)));
 	}
 
 	_inverseTensor.setInertiaTensorCoeffs(ix, iy, iz, ixy, ixz, iyz);
 	_inverseTensor.invert();
+
+	orientation.normalise();
+	Matrix4 transformMatrix;
+	CalculateTransformMatrix(transformMatrix, massCenter, orientation);
+	TransformInertiaTensor(_inverseTensorWorld, orientation, _inverseTensor, transformMatrix);
 }
 
 void PBD_ObjectCloth::solveDistanceConstraint(int index0, int index1, double restlength)
@@ -273,7 +284,7 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 
 	vec3 gravity(0.0, -9.8, 0.0);
 	vec3 buoyancy = gravity * volume * (0.02) * -1.0;
-	double damping = 0.99;
+	double linearDamping = 0.99;
 
 	vec3 massCenter(0.0, 0.0, 0.0);
 	for (auto v : _vertices) {
@@ -281,9 +292,10 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 	}
 	massCenter /= _vertices.size();
 
-	printf("mass Center : (%f, %f, %f)\n", massCenter.x(), massCenter.y(), massCenter.z());
+	//printf("mass Center : (%f, %f, %f)\n", massCenter.x(), massCenter.y(), massCenter.z());
 
 	vec3 torque = (_vertices[_vertices.size() / 5]->_pos - massCenter).cross(reaction);
+	double angularDamping = 0.99;
 
 	for (auto v : _vertices) {
 		vec3 airDrag = v->_vel * -0.5 * 0.5 * 1.205 * area;
@@ -296,15 +308,103 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 		v->_vel += gravity * dt;
 		v->_vel += buoyancy * dt * v->_invMass;
 		v->_vel += airDrag * dt * v->_invMass;
-		v->_vel *= damping;
+		v->_vel *= linearDamping;
 		v->_pos1 = v->_pos + (v->_vel * dt);
 
-		v->_angVel += Quaternion(_inverseTensor * torque) * dt;
-		v->_orientation += v->_angVel * v->_orientation * dt;
+		v->_angVel += _inverseTensorWorld * torque * dt;
+		v->_angVel *= angularDamping;
+		v->_orientation += Quaternion(v->_angVel) * v->_orientation * dt * 0.5;
+		v->_orientation.normalise();
 		Matrix3 rotateMatrix;
 		rotateMatrix.setOrientation(v->_orientation);
 		v->_pos1 = rotateMatrix * v->_pos1;
 	}
+}
+
+void PBD_ObjectCloth::TransformInertiaTensor(Matrix3& iitWorld, const Quaternion& q, const Matrix3& iitBody, const Matrix4& rotmat)
+{
+	double t4 = rotmat.data[0] * iitBody.data[0] +
+		rotmat.data[1] * iitBody.data[3] +
+		rotmat.data[2] * iitBody.data[6];
+	double t9 = rotmat.data[0] * iitBody.data[1] +
+		rotmat.data[1] * iitBody.data[4] +
+		rotmat.data[2] * iitBody.data[7];
+	double t14 = rotmat.data[0] * iitBody.data[2] +
+		rotmat.data[1] * iitBody.data[5] +
+		rotmat.data[2] * iitBody.data[8];
+	double t28 = rotmat.data[4] * iitBody.data[0] +
+		rotmat.data[5] * iitBody.data[3] +
+		rotmat.data[6] * iitBody.data[6];
+	double t33 = rotmat.data[4] * iitBody.data[1] +
+		rotmat.data[5] * iitBody.data[4] +
+		rotmat.data[6] * iitBody.data[7];
+	double t38 = rotmat.data[4] * iitBody.data[2] +
+		rotmat.data[5] * iitBody.data[5] +
+		rotmat.data[6] * iitBody.data[8];
+	double t52 = rotmat.data[8] * iitBody.data[0] +
+		rotmat.data[9] * iitBody.data[3] +
+		rotmat.data[10] * iitBody.data[6];
+	double t57 = rotmat.data[8] * iitBody.data[1] +
+		rotmat.data[9] * iitBody.data[4] +
+		rotmat.data[10] * iitBody.data[7];
+	double t62 = rotmat.data[8] * iitBody.data[2] +
+		rotmat.data[9] * iitBody.data[5] +
+		rotmat.data[10] * iitBody.data[8];
+
+	iitWorld.data[0] = t4 * rotmat.data[0] +
+		t9 * rotmat.data[1] +
+		t14 * rotmat.data[2];
+	iitWorld.data[1] = t4 * rotmat.data[4] +
+		t9 * rotmat.data[5] +
+		t14 * rotmat.data[6];
+	iitWorld.data[2] = t4 * rotmat.data[8] +
+		t9 * rotmat.data[9] +
+		t14 * rotmat.data[10];
+	iitWorld.data[3] = t28 * rotmat.data[0] +
+		t33 * rotmat.data[1] +
+		t38 * rotmat.data[2];
+	iitWorld.data[4] = t28 * rotmat.data[4] +
+		t33 * rotmat.data[5] +
+		t38 * rotmat.data[6];
+	iitWorld.data[5] = t28 * rotmat.data[8] +
+		t33 * rotmat.data[9] +
+		t38 * rotmat.data[10];
+	iitWorld.data[6] = t52 * rotmat.data[0] +
+		t57 * rotmat.data[1] +
+		t62 * rotmat.data[2];
+	iitWorld.data[7] = t52 * rotmat.data[4] +
+		t57 * rotmat.data[5] +
+		t62 * rotmat.data[6];
+	iitWorld.data[8] = t52 * rotmat.data[8] +
+		t57 * rotmat.data[9] +
+		t62 * rotmat.data[10];
+}
+
+void PBD_ObjectCloth::CalculateTransformMatrix(Matrix4& transformMatrix, const vec3& position, const Quaternion& orientation)
+{
+	transformMatrix.data[0] = 1 - 2 * orientation.j * orientation.j -
+		2 * orientation.k * orientation.k;
+	transformMatrix.data[1] = 2 * orientation.i * orientation.j -
+		2 * orientation.r * orientation.k;
+	transformMatrix.data[2] = 2 * orientation.i * orientation.k +
+		2 * orientation.r * orientation.j;
+	transformMatrix.data[3] = position._value[0];
+
+	transformMatrix.data[4] = 2 * orientation.i * orientation.j +
+		2 * orientation.r * orientation.k;
+	transformMatrix.data[5] = 1 - 2 * orientation.i * orientation.i -
+		2 * orientation.k * orientation.k;
+	transformMatrix.data[6] = 2 * orientation.j * orientation.k -
+		2 * orientation.r * orientation.i;
+	transformMatrix.data[7] = position._value[1];
+
+	transformMatrix.data[8] = 2 * orientation.i * orientation.k -
+		2 * orientation.r * orientation.j;
+	transformMatrix.data[9] = 2 * orientation.j * orientation.k +
+		2 * orientation.r * orientation.i;
+	transformMatrix.data[10] = 1 - 2 * orientation.i * orientation.i -
+		2 * orientation.j * orientation.j;
+	transformMatrix.data[11] = position._value[2];
 }
 
 void PBD_ObjectCloth::updateStructuralSprings(void)
@@ -418,6 +518,7 @@ void PBD_ObjectCloth::simulation(double dt)
 	updateNormal();
 	updateMass();
 	updatePressure();
+	computeInverseTensor();
 	applyExtForces(dt);
 	applyAirRelease();
 

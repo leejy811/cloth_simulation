@@ -16,7 +16,7 @@ public:
 	Vec3<double>	_pos1; // X,Y,Z
 	Vec3<double>	_normal;
 	Vec3<double> _vel;
-	Quaternion _angVel;
+	Vec3<double> _angVel;
 	Quaternion _orientation;
 	Vec3<double> _volGradC;
 	double	_invMass;

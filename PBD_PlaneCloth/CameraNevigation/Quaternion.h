@@ -88,11 +88,18 @@ public:
 
     void operator +=(Quaternion& add)
     {
-        Quaternion q = *this;
-        q.r += add.r;
-        q.i += add.i;
-        q.j += add.j;
-        q.k += add.k;
+        r += add.r;
+        i += add.i;
+        j += add.j;
+        k += add.k;
+    }
+
+    void operator /=(double div)
+    {
+        r /= div;
+        i /= div;
+        j /= div;
+        k /= div;
     }
 
     void addScaledVector(const vec3& vector, double scale)
