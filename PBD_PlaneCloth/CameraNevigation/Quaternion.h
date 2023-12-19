@@ -86,6 +86,26 @@ public:
         return q;
     }
 
+    Quaternion operator +(const Quaternion& add)
+    {
+        Quaternion q = *this;
+        q.r += add.r;
+        q.i += add.i;
+        q.j += add.j;
+        q.k += add.k;
+        return q;
+    }
+
+    Quaternion operator -(const Quaternion& sub)
+    {
+        Quaternion q = *this;
+        q.r -= sub.r;
+        q.i -= sub.i;
+        q.j -= sub.j;
+        q.k -= sub.k;
+        return q;
+    }
+
     void operator +=(Quaternion& add)
     {
         r += add.r;
@@ -100,6 +120,14 @@ public:
         i /= div;
         j /= div;
         k /= div;
+    }
+
+    void operator *=(double multiplier)
+    {
+        r *= multiplier;
+        i *= multiplier;
+        j *= multiplier;
+        k *= multiplier;
     }
 
     void addScaledVector(const vec3& vector, double scale)

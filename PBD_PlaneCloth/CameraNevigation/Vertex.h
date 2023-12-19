@@ -18,6 +18,7 @@ public:
 	Vec3<double> _vel;
 	Vec3<double> _angVel;
 	Quaternion _orientation;
+	Quaternion _orientation1;
 	Vec3<double> _volGradC;
 	double	_invMass;
 	double	_airDrag;

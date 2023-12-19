@@ -210,7 +210,6 @@ void	PBD_ObjectCloth::computeInverseTensor(void) {
 	_inverseTensor.setInertiaTensorCoeffs(ix, iy, iz, ixy, ixz, iyz);
 	_inverseTensor.invert();
 
-	orientation.normalise();
 	Matrix4 transformMatrix;
 	CalculateTransformMatrix(transformMatrix, massCenter, orientation);
 	TransformInertiaTensor(_inverseTensorWorld, orientation, _inverseTensor, transformMatrix);
@@ -292,11 +291,6 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 	}
 	massCenter /= _vertices.size();
 
-	//printf("mass Center : (%f, %f, %f)\n", massCenter.x(), massCenter.y(), massCenter.z());
-
-	vec3 torque = (_vertices[_vertices.size() / 5]->_pos - massCenter).cross(reaction);
-	double angularDamping = 0.99;
-
 	for (auto v : _vertices) {
 		vec3 airDrag = v->_vel * -0.5 * 0.5 * 1.205 * area;
 		double dot = v->_vel.dot(v->_normal) / v->_vel.getNorm();
@@ -311,13 +305,17 @@ void PBD_ObjectCloth::applyExtForces(double dt)
 		v->_vel *= linearDamping;
 		v->_pos1 = v->_pos + (v->_vel * dt);
 
+		vec3 allForce = reaction + gravity + buoyancy + airDrag;
+		vec3 torque = (_vertices[_vertices.size() / 5]->_pos - massCenter).cross(allForce);
+		double angularDamping = 0.99;
+
 		v->_angVel += _inverseTensorWorld * torque * dt;
 		v->_angVel *= angularDamping;
-		v->_orientation += Quaternion(v->_angVel) * v->_orientation * dt * 0.5;
-		v->_orientation.normalise();
+		v->_orientation = v->_orientation + Quaternion(v->_angVel) * v->_orientation * dt * 0.5;
+		v->_orientation *= angularDamping;
 		Matrix3 rotateMatrix;
-		rotateMatrix.setOrientation(v->_orientation);
-		v->_pos1 = rotateMatrix * v->_pos1;
+		rotateMatrix.setOrientation(Quaternion(v->_orientation));
+		v->_pos1 = massCenter + rotateMatrix * (v->_pos1 - massCenter);
 	}
 }
 
@@ -470,7 +468,7 @@ void PBD_ObjectCloth::updatePressure(void) {
 		volume += f->_vertices[0]->_pos.cross(f->_vertices[1]->_pos).dot(f->_vertices[2]->_pos);
 	}
 
-	_pressure = ((_addVolume + 20) * 4 * 2077 * 294.15) / volume;
+	_pressure = ((volume - _restVolume + 20) * 4 * 2077 * 294.15) / volume;
 }
 
 void PBD_ObjectCloth::updateNormal(void) {
