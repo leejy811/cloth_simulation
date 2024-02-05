@@ -21,6 +21,10 @@ public:
 	vector<Vertex*> _vertices;
 	vector<Face*> _faces;
 	vector<int> _fixIndex;
+	vector<vec3> _pathVertices1;
+	vector<vec3> _pathVertices2;
+	vector<vec3> _pathVertices3;
+	vector<vec3> _pathVertices4;
 	Matrix3 _inverseTensor;
 	Matrix3 _inverseTensorWorld;
 public:
@@ -57,6 +61,7 @@ public:
 	void updateMass(void);
 	void updatePressure(void);
 	void updateNormal(void);
+	void updatePath(void);
 	void	applyWind(vec3 wind);
 	void	applyBallon(void);
 	void	applyAirRelease(void);
@@ -71,6 +76,7 @@ public:
 	void	drawWire(void);
 	void	drawSolid(void);
 	void	drawPoint(void);
+	void	drawPath(void);
 };
 
 #endif

@@ -56,7 +56,6 @@ void PBD_ObjectCloth::loadObj(char* filename)
 	printf("num. faces : %d\n", _faces.size());
 	moveToCenter(3.0);
 	buildAdjacency();
-	//selectFixVertex();
 	computeRestLength();
 	computeRestVolume();
 	computeNormal();
@@ -527,6 +526,15 @@ void PBD_ObjectCloth::simulation(double dt)
 	}
 
 	integrate(dt);
+	//updatePath();
+}
+
+void PBD_ObjectCloth::updatePath(void)
+{
+	_pathVertices1.push_back(_vertices[_vertices.size() / 5]->_pos);
+	_pathVertices2.push_back(_vertices[_vertices.size() / 4]->_pos);
+	_pathVertices3.push_back(_vertices[_vertices.size() / 3]->_pos);
+	_pathVertices4.push_back(_vertices[_vertices.size() / 2]->_pos);
 }
 
 void PBD_ObjectCloth::computeWindForTriangle(vec3 wind, Face* f)
@@ -610,5 +618,43 @@ void PBD_ObjectCloth::drawWire(void)
 		}
 		glEnd();
 	}
+	glEnable(GL_LIGHTING);
+}
+
+void	PBD_ObjectCloth::drawPath(void)
+{
+	glDisable(GL_LIGHTING);
+	glColor3f(1.0f, 0.0f, 0.0f);
+	glBegin(GL_LINE_STRIP);
+	for (auto v : _pathVertices1)
+	{
+		glVertex3f(v.x(), v.y(), v.z());
+	}
+	glEnd();
+
+	glColor3f(0.0f, 1.0f, 0.0f);
+	glBegin(GL_LINE_STRIP);
+	for (auto v : _pathVertices2)
+	{
+		glVertex3f(v.x(), v.y(), v.z());
+	}
+	glEnd();
+
+	glColor3f(0.0f, 0.0f, 1.0f);
+	glBegin(GL_LINE_STRIP);
+	for (auto v : _pathVertices3)
+	{
+		glVertex3f(v.x(), v.y(), v.z());
+	}
+	glEnd();
+
+	glColor3f(0.0f, 0.0f, 0.0f);
+	glBegin(GL_LINE_STRIP);
+	for (auto v : _pathVertices4)
+	{
+		glVertex3f(v.x(), v.y(), v.z());
+	}
+	glEnd();
+
 	glEnable(GL_LIGHTING);
 }

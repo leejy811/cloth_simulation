@@ -4,6 +4,9 @@
 #include "PBD_PlaneCloth.h"
 #include "PBD_ObjectCloth.h"
 #include <ctime>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 int width = 800;
 int height = 800;
@@ -17,13 +20,15 @@ int lasty = 0;
 unsigned char Buttons[3] = { 0 };
 bool simulation = false;
 
-//PBD_PlaneCloth *_pbd;
-PBD_ObjectCloth * _pbd;
+double frame = 0.0;
+double prevTime = 0.0;
+double fps = 0.0;
+
+PBD_ObjectCloth* _pbd;
 
 void Init(void) 
 {
 	glEnable(GL_DEPTH_TEST);
-	//_pbd = new PBD_PlaneCloth(60, 60);
 	_pbd = new PBD_ObjectCloth("OBJ\\Bunny_close.obj");
 }
 
@@ -31,13 +36,10 @@ void Darw(void)
 {
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	/* Plane Cloth
-	_pbd->draw();
-	_pbd->drawSpring();
-	*/
 	
 	// Object Cloth
 	_pbd->drawSolid();
+	_pbd->drawPath();
 
 	glDisable(GL_LIGHTING);
 }
@@ -75,7 +77,6 @@ void Capture(char *filename, int width, int height)
 
 void Update(void)
 {
-	static int frame = 0;
 	if (simulation) {
 		//if (frame == 0 || frame % 4 == 0) {
 		//	static int index = 0;
@@ -85,7 +86,6 @@ void Update(void)
 		//}
 		_pbd->simulation(0.01);
 	}
-	frame++;
 	::glutPostRedisplay();
 }
 
@@ -184,7 +184,7 @@ void Keyboard(unsigned char key, int x, int y)
 		exit(0);
 	case 'r':
 	case 'R':
-		_pbd->reset();
+		//_pbd->reset();
 		break;
 	case 'f':
 	case 'F':
